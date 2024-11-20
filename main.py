@@ -18,43 +18,28 @@ class WidVision:
         self._val_alpha = tkinter.DoubleVar(value=1.0)
         self._val_dpi = tkinter.IntVar(value=72)
 
-        self.switch_top(True)
-        self.switch_alpha(True)
-
-        wid.bind("<FocusIn>", lambda event: self.switch_alpha(True))
-        wid.bind("<FocusOut>", lambda event: self.switch_alpha(False))
-        wid.protocol("WM_DELETE_WINDOW", self.on_event_Close)
-
         self.init_wid(wid)
         wid.update_idletasks()
         self.read_conf()
+        self.switch_top(True)
+        self.switch_alpha(True)
 
     # 初始化窗口
     def init_wid(self, wid):
-        # tkinter.Scale(
-        #     wid,
-        #     from_=50,
-        #     to_=500,
-        #     resolution=1,
-        #     orient="vertical",
-        #     variable=self._val_dpi,
-        #     command=self.on_dpi,
-        # ).pack(side="left", padx=10)
-
         top_wid = tkinter.Frame(wid)
+        top_wid.configure(bg="white")
         top_wid.pack(side="top", fill="x")
 
         tkinter.Label(top_wid, textvariable=self._txt_page).pack(side="left", padx=10)
         tkinter.Button(top_wid, text="新书", command=self.on_select_pdf).pack(
             side="left", padx=10
         )
-        # tkinter.Button(top_wid, text="上一页", command=self.on_click_prev).pack(
-        #     side="left", padx=10
-        # )
-        # tkinter.Button(top_wid, text="下一页", command=self.on_click_next).pack(
-        #     side="left", padx=10
-        # )
-
+        tkinter.Button(top_wid, text="上一页", command=self.on_click_prev).pack(
+            side="left", padx=10
+        )
+        tkinter.Button(top_wid, text="下一页", command=self.on_click_next).pack(
+            side="left", padx=10
+        )
         tkinter.Button(top_wid, text="透明-", command=self.on_alpha_sub).pack(
             side="left", padx=10
         )
@@ -68,24 +53,17 @@ class WidVision:
             side="left", padx=10
         )
 
-        self._label = tkinter.Label(wid)
+        self._wid.attributes("-transparentcolor", "#818181")
+        self._label = tkinter.Label(self._wid)
         self._label.pack(fill="both", expand=True)
+        self._label.configure(bg="#818181")
 
         self._label.bind("<Button-1>", lambda event: self.on_click_prev())
         self._label.bind("<Button-3>", lambda event: self.on_click_next())
 
-        # tkinter.Checkbutton(
-        #     wid, text="置顶", variable=self._val_check, command=self.on_check
-        # ).pack(side="left", padx=10)
-        # tkinter.Scale(
-        #     wid,
-        #     from_=0.1,
-        #     to_=1.0,
-        #     resolution=0.1,
-        #     orient="horizontal",
-        #     variable=self._val_alpha,
-        #     command=self.on_alpha,
-        # ).pack(side="left", padx=10)
+        self._wid.bind("<FocusIn>", lambda event: self.switch_alpha(True))
+        self._wid.bind("<FocusOut>", lambda event: self.switch_alpha(False))
+        self._wid.protocol("WM_DELETE_WINDOW", self.on_event_Close)
 
     # 切换透明度
     def switch_alpha(self, show):
@@ -101,13 +79,12 @@ class WidVision:
     # 显示PDF
     def show_pdf(self):
         page = self._doc[self._index]
-        pxi = None
         if self._val_dpi == 72:
-            pix = page.get_pixmap()
+            pix = page.get_pixmap(alpha=True)
         else:
-            pix = page.get_pixmap(dpi=self._val_dpi.get())
+            pix = page.get_pixmap(alpha=True, dpi=self._val_dpi.get())
 
-        image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        image = Image.frombytes("RGBA", [pix.width, pix.height], pix.samples)
         pdf_page_image = ImageTk.PhotoImage(image)
         self._label.config(image=pdf_page_image)
         self._label.image = pdf_page_image
