@@ -15,7 +15,8 @@ class WidVision:
         self._file = ""
         self._txt_page = tkinter.StringVar(value="-")
         self._val_check = tkinter.BooleanVar(value=True)
-        self._val_scale = tkinter.DoubleVar(value=1.0)
+        self._val_alpha = tkinter.DoubleVar(value=1.0)
+        self._val_dpi = tkinter.IntVar(value=72)
 
         self.switch_top(True)
         self.switch_alpha(True)
@@ -30,39 +31,66 @@ class WidVision:
 
     # 初始化窗口
     def init_wid(self, wid):
+        # tkinter.Scale(
+        #     wid,
+        #     from_=50,
+        #     to_=500,
+        #     resolution=1,
+        #     orient="vertical",
+        #     variable=self._val_dpi,
+        #     command=self.on_dpi,
+        # ).pack(side="left", padx=10)
+
+        top_wid = tkinter.Frame(wid)
+        top_wid.pack(side="top", fill="x")
+
+        tkinter.Label(top_wid, textvariable=self._txt_page).pack(side="left", padx=10)
+        tkinter.Button(top_wid, text="新书", command=self.on_select_pdf).pack(
+            side="left", padx=10
+        )
+        # tkinter.Button(top_wid, text="上一页", command=self.on_click_prev).pack(
+        #     side="left", padx=10
+        # )
+        # tkinter.Button(top_wid, text="下一页", command=self.on_click_next).pack(
+        #     side="left", padx=10
+        # )
+
+        tkinter.Button(top_wid, text="透明-", command=self.on_alpha_sub).pack(
+            side="left", padx=10
+        )
+        tkinter.Button(top_wid, text="透明+", command=self.on_alpha_add).pack(
+            side="left", padx=10
+        )
+        tkinter.Button(top_wid, text="DPI-", command=self.on_DPI_sub).pack(
+            side="left", padx=10
+        )
+        tkinter.Button(top_wid, text="DPI+", command=self.on_DPI_add).pack(
+            side="left", padx=10
+        )
+
         self._label = tkinter.Label(wid)
         self._label.pack(fill="both", expand=True)
 
         self._label.bind("<Button-1>", lambda event: self.on_click_prev())
         self._label.bind("<Button-3>", lambda event: self.on_click_next())
 
-        tkinter.Label(wid, textvariable=self._txt_page).pack(side="left", padx=10)
-        tkinter.Button(wid, text="上一页", command=self.on_click_prev).pack(
-            side="left", padx=10
-        )
-        tkinter.Button(wid, text="下一页", command=self.on_click_next).pack(
-            side="left", padx=10
-        )
-        tkinter.Button(wid, text="新书", command=self.on_select_pdf).pack(
-            side="left", padx=10
-        )
-        tkinter.Checkbutton(
-            wid, text="置顶", variable=self._val_check, command=self.on_check
-        ).pack(side="left", padx=10)
-        tkinter.Scale(
-            wid,
-            from_=0.1,
-            to_=1.0,
-            resolution=0.1,
-            orient="horizontal",
-            variable=self._val_scale,
-            command=self.on_alpha,
-        ).pack(side="left", padx=10)
+        # tkinter.Checkbutton(
+        #     wid, text="置顶", variable=self._val_check, command=self.on_check
+        # ).pack(side="left", padx=10)
+        # tkinter.Scale(
+        #     wid,
+        #     from_=0.1,
+        #     to_=1.0,
+        #     resolution=0.1,
+        #     orient="horizontal",
+        #     variable=self._val_alpha,
+        #     command=self.on_alpha,
+        # ).pack(side="left", padx=10)
 
     # 切换透明度
     def switch_alpha(self, show):
         if show:
-            self._wid.wm_attributes("-alpha", self._val_scale.get())
+            self._wid.wm_attributes("-alpha", self._val_alpha.get())
         else:
             self._wid.wm_attributes("-alpha", 0.1)
 
@@ -73,18 +101,34 @@ class WidVision:
     # 显示PDF
     def show_pdf(self):
         page = self._doc[self._index]
-        pix = page.get_pixmap()
+        pxi = None
+        if self._val_dpi == 72:
+            pix = page.get_pixmap()
+        else:
+            pix = page.get_pixmap(dpi=self._val_dpi.get())
 
         image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         pdf_page_image = ImageTk.PhotoImage(image)
         self._label.config(image=pdf_page_image)
         self._label.image = pdf_page_image
-        self._txt_page.set("当前页数： %s / %d" % (self._index + 1, len(self._doc)))
+        self._txt_page.set(
+            "[页数: %s / %d][透明: %.1f][DPI: %d] "
+            % (
+                self._index + 1,
+                len(self._doc),
+                self._val_alpha.get(),
+                self._val_dpi.get(),
+            )
+        )
 
     # 写入配置
     def write_conf(self):
-        data = {"file": str(self._file), "index": int(self._index)}
-        print(self._file, str(self._file))
+        data = {
+            "file": str(self._file),
+            "index": int(self._index),
+            "alpha": float(self._val_alpha.get()),
+            "dpi": int(self._val_dpi.get()),
+        }
         with open("conf.json", "w") as file:
             json.dump(data, file, indent=4)
 
@@ -95,7 +139,10 @@ class WidVision:
                 data = json.load(file)
                 self.load_pdf(str(data["file"]))
                 self._index = int(data["index"])
+                self._val_alpha.set(float(data["alpha"]))
+                self._val_dpi.set(int(data["dpi"]))
                 self.show_pdf()
+                self.write_conf()
 
     # 重载PDF
     def load_pdf(self, file):
@@ -103,7 +150,6 @@ class WidVision:
         self._index = 0
         self._file = file
         self.show_pdf()
-        self.write_conf()
 
     # 置顶点击
     def on_check(self):
@@ -113,6 +159,11 @@ class WidVision:
     def on_alpha(self, str):
         self.switch_alpha(True)
 
+    # 图像大小
+    def on_dpi(self, str):
+        self.show_pdf()
+        # self.switch_alpha(True)
+
     # 上一页
     def on_click_prev(self):
         if self._index > 0:
@@ -121,8 +172,39 @@ class WidVision:
 
     # 下一页
     def on_click_next(self):
-        self._index += 1
-        self.show_pdf()
+        if self._index < len(self._doc) - 1:
+            self._index += 1
+            self.show_pdf()
+
+    # 透明加
+    def on_alpha_add(self):
+        val = self._val_alpha.get()
+        if val < 1.0:
+            self._val_alpha.set(val + 0.1)
+            self.show_pdf()
+            self.switch_alpha(True)
+
+    # 透明减
+    def on_alpha_sub(self):
+        val = self._val_alpha.get()
+        if val > 0.2:
+            self._val_alpha.set(val - 0.1)
+            self.show_pdf()
+            self.switch_alpha(True)
+
+    # DPI+
+    def on_DPI_add(self):
+        val = self._val_dpi.get()
+        if val < 720:
+            self._val_dpi.set(val + 5)
+            self.show_pdf()
+
+    # DPI-
+    def on_DPI_sub(self):
+        val = self._val_dpi.get()
+        if val > 52:
+            self._val_dpi.set(val - 5)
+            self.show_pdf()
 
     # 新书
     def on_select_pdf(self):
@@ -131,6 +213,7 @@ class WidVision:
         )
         if pdf_file:
             self.load_pdf(pdf_file)
+            self.write_conf()
 
     # 鼠标滚轮
     def on_event_MouseWheel(self, event):
